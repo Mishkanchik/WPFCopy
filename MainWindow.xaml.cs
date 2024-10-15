@@ -19,6 +19,8 @@ namespace FileCopyApp
 
 
 
+
+
         private void BtnFrom_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
@@ -31,6 +33,8 @@ namespace FileCopyApp
 
 
 
+
+
         private void BtnTo_Click(object sender, RoutedEventArgs e)
         {
             var folderDialog = new System.Windows.Forms.FolderBrowserDialog();
@@ -39,6 +43,8 @@ namespace FileCopyApp
                 txtTo.Text = folderDialog.SelectedPath;
             }
         }
+
+
 
 
 
@@ -74,7 +80,7 @@ namespace FileCopyApp
 
             try
             {
-                await Task.Run(() => CopyFiles(fromPath, toPath, copies, token));
+                await Task.Run(() => CopyFiles(fromPath, toPath, copies, token), token);
             }
             catch (OperationCanceledException)
             {
@@ -91,10 +97,15 @@ namespace FileCopyApp
 
 
 
+
+
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
             cancellationTokenSource.Cancel();
         }
+
+
+
 
 
 
@@ -103,10 +114,18 @@ namespace FileCopyApp
             for (int i = 1; i <= copies; i++)
             {
                 token.ThrowIfCancellationRequested();
+
                 string uniqueFileName = Path.Combine(toPath, $"{Path.GetFileNameWithoutExtension(fromPath)}_{i}{Path.GetExtension(fromPath)}");
-                File.Copy(fromPath, uniqueFileName, true);
+
+                using (FileStream sourceStream = File.Open(fromPath, FileMode.Open))
+                using (FileStream destinationStream = File.Create(uniqueFileName))
+                {
+                    sourceStream.CopyTo(destinationStream);
+                }
+
                 Dispatcher.Invoke(() => lblStatus.Content = $"Status: Copying {i}/{copies}...");
-                Thread.Sleep(1000); 
+
+                Task.Delay(1000).Wait();
             }
 
             Dispatcher.Invoke(() => MessageBox.Show("Copying completed!"));
